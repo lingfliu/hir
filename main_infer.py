@@ -1,50 +1,39 @@
 """inference framework"""
+import time
+import cv2
 
-
-"""TODO: 将以下工具补齐"""
-from media_tools import load_video, get_media_type, ImageAnnotator
-
-"""TODO: 将以下框架补齐"""
-from detectors import YoloDetect
-from pose_estimator import Openpose3d
-from preprocess import SkeletonPreprocess, MotionPreprocess # 骨骼预处理，运动预处理
-from hir_analyzer import LocomotionClassifier # 运动分类器
-
-"""global variable definition"""
-media_source = "rtsp://localhost:7554/test.mp4"
-detector = YoloDetect()
-pose_estimator = Openpose3d()
-motion_classifier = LocomotionClassifier()
-skel_preprocess = SkeletonPreprocess()
-motion_preprocess = MotionPreprocess()
-
+# definining data source
+vid_url = './resources/sample.S01E08.HD1080p.mp4'
+import vid_source
 
 if __name__ == '__main__':
+    '''inference from video source'''
+    cap, vid_type = vid_source.get_vid_source(vid_url)
+    if vid_type == 'unknown':
+        print('unknown video source')
+        exit(0)
+    elif vid_type == 'file':
+        total_frame = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        print('total frame: ', total_frame)
+    elif vid_type == 'url':
+        print('url video source')
 
-    if get_media_type(media_source) == 'video':
-        video = load_video(media_source)
-        detect_frames = detector.trace(video)
-
-        # TODO: 显示检测框画面，参考YOLO_StrongSort
-
-        pos_frames = []
-        hierarchy = None
-        for frame in detect_frames:
-            pos_frame, hierarchy = pose_estimator.estimate()
-            pos_frame, hierarchy = skel_preprocess.normalize(pos_frame, hierarchy) # 骨骼预处理
-            pos_frames.append(pos_frame)
-            # TODO: 在帧图像上显示骨骼检测结果
-
-        pos_frames = motion_preprocess.filter(pos_frames, hierarchy) # 运动预处理
-
-        result = motion_classifier.classify(pos_frames)
-
-    else:
-        print("stream not supported yet")
-
-
-
-
-
+    tic = time.time()
+    dts = []
+    for frame in vid_source.capture_frames(cap, vid_url):
+        # do something with the frame
+        cv2.imshow('frame', frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+        # sleep 0.02 seconds
+        toc = time.time()
+        # get the time difference
+        dts.append(toc-tic)
+        if len(dts) > 1000:
+            print("fps: ", 1/(sum(dts)/len(dts)))
+            dts = []
+        print("time: ", toc-tic)
+        tic = toc
+    vid_source.close_vid(cap)
 
 
